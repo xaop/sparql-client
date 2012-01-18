@@ -67,6 +67,21 @@ module SPARQL; class Client
     end
 
     ##
+    # Creates an `UPDATE` query.
+    #
+    # @param  [Array<RDF::Query::Pattern, Array>] patterns
+    # @param  [Hash{Symbol => Object}]            options
+    # @return [Query]
+    # @see    http://www.w3.org/TR/rdf-sparql-query/#construct
+    def self.insert(*patterns)
+      # options = variables.last.is_a?(Hash) ? variables.pop : {}
+      options = patterns.last.is_a?(Hash) ? patterns.pop : {}
+      self.new(:insert, options).insert(*patterns) 
+    end
+
+
+
+    ##
     # @param  [Symbol, #to_s]          form
     # @param  [Hash{Symbol => Object}] options
     # @yield  [query]
@@ -112,11 +127,28 @@ module SPARQL; class Client
       self
     end
 
+
+    ##
+    # @param  [Array<Symbol>] variables
+    # @return [Query]
+    # @see    http://www.w3.org/TR/rdf-sparql-query/#select
+    def insert(*patterns)
+      # @values = variables.map { |var| [var, RDF::Query::Variable.new(var)] }
+      options[:template] = build_patterns(patterns)
+      self
+    end
+
+
     # @param RDF::URI uri
     # @return [Query]
     # @see http://www.w3.org/TR/rdf-sparql-query/#specDataset
     def from(uri)
       options[:from] = uri
+      self
+    end
+
+    def graph(uri)
+      options[:graph] = uri
       self
     end
 
@@ -275,9 +307,20 @@ module SPARQL; class Client
           buffer << '{'
           buffer += serialize_patterns(options[:template])
           buffer << '}'
+        
+        # for virtuoso insert
+        when :insert
+          buffer << 'DATA INTO'
+          buffer << "GRAPH #{serialize_value(options[:graph])}" if options[:graph]
+          buffer << '{'
+          buffer += serialize_patterns(options[:template])
+          # buffer << (values.empty? ? '*' : values.map { |v| serialize_value(v[1]) }.join(' '))
+          buffer << '}'
       end
 
       buffer << "FROM #{serialize_value(options[:from])}" if options[:from]
+
+      
 
       unless patterns.empty? && form == :describe
         buffer << 'WHERE {'

@@ -21,6 +21,18 @@ describe SPARQL::Client::Query do
     it "should support CONSTRUCT queries" do
       @query.should respond_to(:construct)
     end
+
+    it "should support UPDATE queries" do
+      @query.should respond_to(:insert)
+    end
+  end
+
+
+  context "when building update queries" do
+    it "should support inserts" do
+      uri = "http://example.org/dft.ttl"
+      @query.insert([:s, :p, :o]).graph(RDF::URI.new(uri)).where([:s, :p, :o]).to_s.should == "INSERT DATA INTO GRAPH <#{uri}> { ?s ?p ?o . } WHERE { ?s ?p ?o . }"
+    end
   end
 
   context "when building ASK queries" do
