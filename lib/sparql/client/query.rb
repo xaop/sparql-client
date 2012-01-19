@@ -322,7 +322,7 @@ module SPARQL; class Client
 
       
 
-      unless patterns.empty? && form == :describe
+      unless patterns.empty? && (form == :describe || form == :insert)
         buffer << 'WHERE {'
         buffer += serialize_patterns(patterns)
         if options[:optionals]

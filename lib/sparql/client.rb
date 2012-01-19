@@ -81,6 +81,10 @@ module SPARQL
       call_query_method(:construct, *args)
     end
 
+    def insert(*args)
+      call_query_method(:insert, *args)
+    end
+
     ##
     # @private
     def call_query_method(meth, *args)

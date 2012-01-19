@@ -18,6 +18,8 @@ Features
 * Supports accessing endpoints as read-only [`RDF::Repository`][RDF::Repository]
   instances.
 
+* Added basic INSERT support for Sparql Update (specific for Virtuoso, which does not follow the standard completely :-( )
+
 Examples
 --------
 
@@ -55,6 +57,14 @@ Examples
     result = sparql.query("ASK WHERE { ?s ?p ?o }")
     
     puts result.inspect   #=> true or false
+
+### Executing a SPARQL INSERT on Virtuoso repository
+    s = RDF::Query::Variable.new( "<http://data.linkedct.org/resource/trials/NCT00068588>")
+    o = ....
+    p = ....
+    # INSERT DATA INTO GRAPH <graph_uri> { <http://data.linkedct.org/resource/trials/NCT00068588> xxxxx yyyyy .}
+    query = sparql.insert([s, o, p]).graph(RDF::URI.new('graph_uri'))    
+    puts query.result.inspect
 
 Documentation
 -------------
