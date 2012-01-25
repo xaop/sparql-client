@@ -19,6 +19,8 @@ Features
   instances.
 
 * Added basic INSERT support for Sparql Update (specific for Virtuoso, which does not follow the standard completely :-( )
+* Added CREATE / DROP / CLEAR GRAPH
+* Added DELETE DATA / DELETE support (also Virtuoso specific probably...)
 
 Examples
 --------
@@ -65,6 +67,8 @@ Examples
     # INSERT DATA INTO GRAPH <graph_uri> { <http://data.linkedct.org/resource/trials/NCT00068588> xxxxx yyyyy .}
     query = sparql.insert([s, o, p]).graph(RDF::URI.new('graph_uri'))    
     puts query.result.inspect
+
+### SPARQL CREATE/CLEAR/DROP GRAPH and DELETE / DELETE DATA => see tests in query_spec.rb for usage
 
 Documentation
 -------------
@@ -124,6 +128,7 @@ Contributors
 * [David Nielsen](http://github.com/drankard) - <http://github.com/drankard>
 * [Thamaraiselvan Poomalai](http://github.com/selvan) - <http://softonaut.blogspot.com/>
 * [Gregg Kellogg](http://github.com/gkellogg) - <http://kellogg-assoc.com/>
+* [Stijn Pint](http://github.com/xaop) - <http://www.xaop.com>
 
 Contributing
 ------------

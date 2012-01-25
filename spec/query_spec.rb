@@ -22,17 +22,57 @@ describe SPARQL::Client::Query do
       @query.should respond_to(:construct)
     end
 
-    it "should support UPDATE queries" do
+    it "should support INSERT queries" do
       @query.should respond_to(:insert)
     end
+
+    it "should support DELETE DATA queries" do
+      @query.should respond_to(:delete_data)
+    end
+
+    it "should support DELETE DATA queries" do
+      @query.should respond_to(:delete)
+    end
+
+    it "should support CREATE GRAPH queries" do
+      @query.should respond_to(:create)
+    end
+
   end
 
 
   context "when building update queries" do
-    it "should support inserts" do
-      uri = "http://example.org/dft.ttl"
-      @query.insert([:s, :p, :o]).graph(RDF::URI.new(uri)).where([:s, :p, :o]).to_s.should == "INSERT DATA INTO GRAPH <#{uri}> { ?s ?p ?o . } WHERE { ?s ?p ?o . }"
+    before :each do
+      @graph = "http://example.org/"
+      @uri = RDF::Vocabulary.new "http://example.org/"
     end
+    # TODO add support for advanced inserts (moving copying between different graphs)
+    it "should support inserts" do
+      @query.insert([@uri.ola, @uri.type, @uri.something]).graph(RDF::URI.new(@graph)).where([:s, :p, :o]).to_s.should == "INSERT DATA INTO GRAPH <#{@graph}> { <#{@graph}ola> <#{@graph}type> <#{@graph}something> . } WHERE { ?s ?p ?o . }"
+      # @query.insert([uri.ola, uri.name, RDF::Literal.new('myname')]).graph(RDF::URI.new(uri)).where([:s, :p, :o]).to_s.should == "INSERT DATA INTO GRAPH <#{@graph}> { <#{@graph}ola> <#{@graph}name> <myname> . } WHERE { ?s ?p ?o . }"
+      @query.insert([@uri.ola, @uri.name, RDF::Literal.new("myname")]).graph(RDF::URI.new(@graph)).where([:s, :p, :o]).to_s.should == "INSERT DATA INTO GRAPH <#{@graph}> { <#{@graph}ola> <#{@graph}name> \"myname\" . } WHERE { ?s ?p ?o . }"
+    end
+
+    it "should support delete data queries" do
+      @query.delete_data([@uri.ola, @uri.type, @uri.something]).graph(RDF::URI.new(@graph)).to_s.should == "DELETE DATA FROM <#{@graph}> { <#{@graph}ola> <#{@graph}type> <#{@graph}something> . }"  
+      @query.delete_data([@uri.ola, @uri.name, RDF::Literal.new("myname")]).graph(RDF::URI.new(@graph)).to_s.should == "DELETE DATA FROM <#{@graph}> { <#{@graph}ola> <#{@graph}name> \"myname\" . }"  
+    end
+
+    it "should support delete queries" do
+      @query.delete(:s, :p, :o).graph(RDF::URI.new(@graph)).where([:s, :p, :o]).to_s.should == "DELETE FROM <#{@graph}> { ?s ?p ?o } WHERE { ?s ?p ?o . }"
+    end
+
+    it "should support CREATE GRAPH queries" do
+      @query.create(RDF::URI.new(@graph)).to_s.should == "CREATE GRAPH <#{@graph}>"
+      @query.create(RDF::URI.new(@graph), :silent => true).to_s.should == "CREATE SILENT GRAPH <#{@graph}>"
+    end
+
+    it "should support DROP GRAPH queries" do
+      @query.drop(RDF::URI.new(@graph)).to_s.should == "DROP GRAPH <#{@graph}>"
+      @query.drop(RDF::URI.new(@graph), :silent => true).to_s.should == "DROP SILENT GRAPH <#{@graph}>"
+
+    end
+
   end
 
   context "when building ASK queries" do

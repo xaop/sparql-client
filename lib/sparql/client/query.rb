@@ -20,6 +20,9 @@ module SPARQL; class Client
     # @return [Array<[key, RDF::Value]>]
     attr_reader :values
 
+
+    attr_reader :data_values
+
     ##
     # Creates a boolean `ASK` query.
     #
@@ -80,6 +83,30 @@ module SPARQL; class Client
     end
 
 
+    def self.delete_data(*patterns)
+      options = patterns.last.is_a?(Hash) ? patterns.pop : {}
+      self.new(:delete_data, options).delete_data(*patterns)
+    end
+
+    def self.delete(*variables)
+      options = variables.last.is_a?(Hash) ? variables.pop : {}
+      self.new(:delete, options).describe(*variables)      
+    end
+
+    def self.create(*variables)
+      options = variables.last.is_a?(Hash) ? variables.pop : {}
+      self.new(:create, options).create(variables.first)
+    end
+
+    def self.drop(*variables)
+      options = variables.last.is_a?(Hash) ? variables.pop : {}
+      self.new(:drop, options).drop(variables.first)
+    end
+
+    def self.clear(*variables)
+      options = variables.last.is_a?(Hash) ? variables.pop : {}
+      self.new(:clear, options).clear(variables.first)
+    end
 
     ##
     # @param  [Symbol, #to_s]          form
@@ -134,10 +161,48 @@ module SPARQL; class Client
     # @see    http://www.w3.org/TR/rdf-sparql-query/#select
     def insert(*patterns)
       # @values = variables.map { |var| [var, RDF::Query::Variable.new(var)] }
-      options[:template] = build_patterns(patterns)
+      new_patterns = []
+      patterns.each do |values|
+        # values.map {|p| puts p}
+        new_patterns << values.map { |var| [var, var.is_a?(RDF::URI) ? var : var] }
+      end
+      # ps = patterns.map { |var| [var, RDF::Query::Variable.new(var)] }
+      @data_values = new_patterns #build_patterns(new_patterns)
       self
     end
 
+    def delete_data(*patterns)
+      new_patterns = []
+      patterns.each do |values|
+        # values.map {|p| puts p}
+        new_patterns << values.map { |var| [var, var.is_a?(RDF::URI) ? var : var] }
+      end
+      # ps = patterns.map { |var| [var, RDF::Query::Variable.new(var)] }
+      @data_values = new_patterns #build_patterns(new_patterns)
+      self
+    end
+
+    def delete(*variables)
+      @values = variables.map { |var|
+        [var, var.is_a?(RDF::URI) ? var : RDF::Query::Variable.new(var)]
+      }
+      self
+    end
+
+    def create(uri)
+      options[:graph] = uri
+      self
+    end
+
+    def drop(uri)
+      options[:graph] = uri
+      self
+    end
+
+    def clear(uri)
+      options[:graph] = uri
+      self
+    end
 
     # @param RDF::URI uri
     # @return [Query]
@@ -147,6 +212,8 @@ module SPARQL; class Client
       self
     end
 
+    # @param RDF::URI uri
+    # @return [Query]
     def graph(uri)
       options[:graph] = uri
       self
@@ -237,8 +304,8 @@ module SPARQL; class Client
     def build_patterns(patterns)
       patterns.map do |pattern|
         case pattern
-          when RDF::Query::Pattern then pattern
-          else RDF::Query::Pattern.new(*pattern.to_a)
+        when RDF::Query::Pattern then pattern
+        else RDF::Query::Pattern.new(*pattern.to_a)
         end
       end
     end
@@ -254,9 +321,9 @@ module SPARQL; class Client
     # @return [Boolean]
     def true?
       case result
-        when TrueClass, FalseClass then result
-        when Enumerable then !result.empty?
-        else false
+      when TrueClass, FalseClass then result
+      when Enumerable then !result.empty?
+      else false
       end
     end
 
@@ -297,32 +364,58 @@ module SPARQL; class Client
     #
     # @return [String]
     def to_s
-      buffer = [form.to_s.upcase]
+      buffer = [form.to_s.gsub('_', ' ').upcase]
       case form
-        when :select, :describe
-          buffer << 'DISTINCT' if options[:distinct]
-          buffer << 'REDUCED'  if options[:reduced]
-          buffer << (values.empty? ? '*' : values.map { |v| serialize_value(v[1]) }.join(' '))
-        when :construct
-          buffer << '{'
-          buffer += serialize_patterns(options[:template])
-          buffer << '}'
+      when :select, :describe
+        buffer << 'DISTINCT' if options[:distinct]
+        buffer << 'REDUCED'  if options[:reduced]
+        buffer << (values.empty? ? '*' : values.map { |v| serialize_value(v[1]) }.join(' '))
+      when :construct
+        buffer << '{'
+        buffer += serialize_patterns(options[:template])
+        buffer << '}'
         
         # for virtuoso insert
-        when :insert
-          buffer << 'DATA INTO'
-          buffer << "GRAPH #{serialize_value(options[:graph])}" if options[:graph]
-          buffer << '{'
-          buffer += serialize_patterns(options[:template])
-          # buffer << (values.empty? ? '*' : values.map { |v| serialize_value(v[1]) }.join(' '))
-          buffer << '}'
+      when :insert
+        buffer << 'DATA INTO'
+        buffer << "GRAPH #{serialize_value(options[:graph])}" if options[:graph]
+        buffer << '{'
+        # buffer += serialize_patterns(options[:template])
+        # (@data_values.map { |v| puts v[1].inspect; puts 'xxx ' } )
+        @data_values .each do |triple|
+          buffer << (triple.map { |v| serialize_value(v[1]) }.join(' ') + ' .')
+        end
+        # buffer << (values.empty? ? '*' : values.map { |v| serialize_value(v[1]) }.join(' '))
+        buffer << '}'
+        
+      when :delete_data
+        buffer << "FROM #{serialize_value(options[:graph])}" #if options[:graph]
+        buffer << '{'
+        @data_values .each do |triple|
+          buffer << (triple.map { |v| serialize_value(v[1]) }.join(' ') + ' .')
+        end
+        buffer << '}'          
+
+      when :delete
+        buffer << "FROM #{serialize_value(options[:graph])}"
+        buffer << '{'
+        buffer << (values.empty? ? '*' : values.map { |v| serialize_value(v[1]) }.join(' '))
+        buffer << '}'          
+
+      when :create, :drop
+        buffer << 'SILENT' if options[:silent]
+        buffer << "GRAPH #{serialize_value(options[:graph])}"
+
+      when :clear
+        buffer << "GRAPH #{serialize_value(options[:graph])}"
+
       end
 
       buffer << "FROM #{serialize_value(options[:from])}" if options[:from]
 
       
 
-      unless patterns.empty? && (form == :describe || form == :insert)
+      unless patterns.empty? && ([:describe, :insert, :delete_data, :create, :clear, :drop].include?(form))
         buffer << 'WHERE {'
         buffer += serialize_patterns(patterns)
         if options[:optionals]
@@ -385,8 +478,8 @@ module SPARQL; class Client
       # SPARQL queries are UTF-8, but support ASCII-style Unicode escapes, so
       # the N-Triples serializer is fine unless it's a variable:
       case
-        when value.variable? then value.to_s
-        else RDF::NTriples.serialize(value)
+      when value.variable? then value.to_s
+      else RDF::NTriples.serialize(value)
       end
     end
   end

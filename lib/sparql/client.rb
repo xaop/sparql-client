@@ -85,6 +85,26 @@ module SPARQL
       call_query_method(:insert, *args)
     end
 
+    def delete_data(*args)
+      call_query_method(:delete_data, *args)
+    end
+
+    def delete(*args)
+      call_query_method(:delete, *args)
+    end
+
+    def create(*args)
+      call_query_method(:create, *args)
+    end
+
+    def drop(*args)
+      call_query_method(:drop, *args)
+    end
+
+    def clear(*args)
+      call_query_method(:clear, *args)
+    end
+
     ##
     # @private
     def call_query_method(meth, *args)
