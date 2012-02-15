@@ -146,6 +146,13 @@ describe SPARQL::Client::Query do
       @query.select.where([:s, :p, :o]).optional([:s, RDF.type, :o]).optional([:s, RDF::DC.abstract, :o]).to_s.should ==
         "SELECT * WHERE { ?s ?p ?o . OPTIONAL { ?s <#{RDF.type}> ?o . } OPTIONAL { ?s <#{RDF::DC.abstract}> ?o . } }"
     end
+
+    it "should support UNION" do
+      @query.select.where([:s, RDF::DC.abstract, :o]).union([:s, RDF.type, :o]).to_s.should ==
+      "SELECT * WHERE { { ?s <#{RDF::DC.abstract}> ?o . } UNION { ?s <#{RDF.type}> ?o . } }"
+    end
+
+
   end
 
   context "when building DESCRIBE queries" do

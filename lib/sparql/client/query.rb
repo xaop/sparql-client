@@ -299,6 +299,11 @@ module SPARQL; class Client
       self
     end
 
+    def union(*patterns)
+      (options[:unions] ||= []) << build_patterns(patterns)
+      self
+    end
+
     ##
     # @private
     def build_patterns(patterns)
@@ -417,6 +422,10 @@ module SPARQL; class Client
 
       unless patterns.empty? && ([:describe, :insert, :delete_data, :create, :clear, :drop].include?(form))
         buffer << 'WHERE {'
+
+        buffer << '{' if options[:unions]
+
+
         buffer += serialize_patterns(patterns)
         if options[:optionals]
           options[:optionals].each do |patterns|
@@ -429,6 +438,17 @@ module SPARQL; class Client
           buffer += options[:filters].map { |filter| "FILTER(#{filter})" }
         end
         buffer << '}'
+
+        if options[:unions]
+          options[:unions].each do |patterns|
+            buffer << 'UNION {'
+            buffer += serialize_patterns(patterns)
+            buffer << '}'
+          end
+          buffer << '}'
+        end
+
+
       end
 
       if options[:order_by]
