@@ -121,7 +121,7 @@ module SPARQL
     # @return [String]
     def response(query, options = {})
       @headers['Accept'] = options[:content_type] if options[:content_type]
-      get(query, options[:headers] || {}) do |response|
+      post(query, options[:headers] || {}) do |response|
         case response
           when Net::HTTPBadRequest  # 400 Bad Request
             raise MalformedQuery.new(response.body)
@@ -297,9 +297,32 @@ module SPARQL
       request.basic_auth url.user, url.password if url.user && !url.user.empty?
       response = @http.request url, request
       if block_given?
-	block.call(response)
+        block.call(response)
       else
-	response
+        response
+      end
+    end
+    
+    ##
+    # Performs an HTTP GET request against the SPARQL endpoint.
+    #
+    # @param  [String, #to_s]          query
+    # @param  [Hash{String => String}] headers
+    # @yield  [response]
+    # @yieldparam [Net::HTTPResponse] response
+    # @return [Net::HTTPResponse]
+    def post(query, headers = {}, &block)
+      url = self.url.dup
+      # url.query_values = {:query => query.to_s}
+
+      request = Net::HTTP::Post.new(url.request_uri, @headers.merge(headers))
+      request.set_form_data(:query => query.to_s)
+      request.basic_auth url.user, url.password if url.user && !url.user.empty?
+      response = @http.request url, request
+      if block_given?
+        block.call(response)
+      else
+        response
       end
     end
   end # Client
