@@ -30,8 +30,12 @@ module SPARQL
     # @param  [String, #to_s]          url
     # @param  [Hash{Symbol => Object}] options
     # @option options [Hash] :headers
-    def initialize(url, options = {}, &block)
-      @url, @options = RDF::URI.new(url.to_s), options
+    def initialize(options = {}, &block)
+      @options = options
+      @url = RDF::URI.new(options[:url].to_s)
+      @update_url = options[:update_url] ? RDF::URI.new(options[:update_url].to_s) : @url
+      @query_parameter = options[:query_parameter] ? options[:query_parameter].to_sym : :query
+      @update_query_parameter = options[:update_query_parameter] ? options[:update_query_parameter].to_sym : @query_parameter
       #@headers = {'Accept' => "#{RESULT_JSON}, #{RESULT_XML}, text/plain"}
       @headers = {
         'Accept' => [RESULT_JSON, RESULT_XML, RDF::Format.content_types.keys.map(&:to_s)].join(', ')
@@ -134,7 +138,11 @@ module SPARQL
     def query(query, options = {})
       parse_response(response(query, options), options)
     end
-
+    
+    def update_query(query, options = {})
+      parse_response(response(query, options.merge(:type => :update)), options)
+    end
+    
     ##
     # Executes a SPARQL query and returns the Net::HTTP::Response of the result.
     #
@@ -145,7 +153,7 @@ module SPARQL
     # @return [String]
     def response(query, options = {})
       @headers['Accept'] = options[:content_type] if options[:content_type]
-      post(query, options[:headers] || {}) do |response|
+      post(query, options[:headers] || {}, options[:type]) do |response|
         case response
           when Net::HTTPBadRequest  # 400 Bad Request
             raise MalformedQuery.new(response.body)
@@ -335,14 +343,27 @@ module SPARQL
     # @yield  [response]
     # @yieldparam [Net::HTTPResponse] response
     # @return [Net::HTTPResponse]
-    def post(query, headers = {}, &block)
-      url = self.url.dup
+    def post(query, headers = {}, type, &block)
+      url = type == :update ? @update_url.dup : @url.dup
+      parameter = type == :update ? @update_query_parameter : @query_parameter
       # url.query_values = {:query => query.to_s}
 
       request = Net::HTTP::Post.new(url.request_uri, @headers.merge(headers))
-      request.set_form_data(:query => query.to_s)
+      request.set_form_data(parameter => query.to_s)
       request.basic_auth url.user, url.password if url.user && !url.user.empty?
-      response = @http.request url, request
+      retry_counter = 0
+      begin
+        response = @http.request url, request
+      rescue Net::HTTP::Persistent::Error => e
+        if retry_counter < 2 && /too many connection resets/ === e.message
+          retry_counter += 1
+          puts "RETRYING (#{retry_counter}) AFTER CONNECTION RESET"
+          puts caller.map { |l| "  #{l}" }.join("\n")
+          retry
+        else
+          raise e
+        end
+      end
       if block_given?
         block.call(response)
       else
