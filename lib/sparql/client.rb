@@ -40,6 +40,7 @@ module SPARQL
       @headers = {
         'Accept' => [RESULT_JSON, RESULT_XML, RDF::Format.content_types.keys.map(&:to_s)].join(', ')
       }.merge @options[:headers] || {}
+      @proxy_uri = options[:http_proxy]
       @http = http_klass(@url.scheme)
 
       if block_given?
@@ -284,6 +285,7 @@ module SPARQL
         when "https"
           proxy_uri = URI.parse(ENV['https_proxy']) unless ENV['https_proxy'].nil?
       end
+      proxy_uri = URI.parse(@proxy_uri) if @proxy_uri
       klass = Net::HTTP::Persistent.new(self.class.to_s, proxy_uri)
       klass.keep_alive = 120	# increase to 2 minutes
       klass
