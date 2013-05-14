@@ -138,11 +138,11 @@ module SPARQL
     def query(query, options = {})
       parse_response(response(query, options), options)
     end
-    
+
     def update_query(query, options = {})
       parse_response(response(query, options.merge(:type => :update)), options)
     end
-    
+
     ##
     # Executes a SPARQL query and returns the Net::HTTP::Response of the result.
     #
@@ -321,9 +321,10 @@ module SPARQL
     # @yield  [response]
     # @yieldparam [Net::HTTPResponse] response
     # @return [Net::HTTPResponse]
-    def get(query, headers = {}, &block)
+    def get(query, headers = {}, type, &block)
       url = self.url.dup
-      url.query_values = {:query => query.to_s}
+      parameter = type == :update ? @update_query_parameter : @query_parameter
+      url.query_values = (url.query_values || {}).merge({parameter => query.to_s})
 
       request = Net::HTTP::Get.new(url.request_uri, @headers.merge(headers))
       request.basic_auth url.user, url.password if url.user && !url.user.empty?
@@ -334,7 +335,7 @@ module SPARQL
         response
       end
     end
-    
+
     ##
     # Performs an HTTP GET request against the SPARQL endpoint.
     #
@@ -346,10 +347,11 @@ module SPARQL
     def post(query, headers = {}, type, &block)
       url = type == :update ? @update_url.dup : @url.dup
       parameter = type == :update ? @update_query_parameter : @query_parameter
-      # url.query_values = {:query => query.to_s}
+      form_data = (url.query_values || {}).merge({parameter => query.to_s})
+      url.query_values = nil
 
       request = Net::HTTP::Post.new(url.request_uri, @headers.merge(headers))
-      request.set_form_data(parameter => query.to_s)
+      request.set_form_data(form_data)
       request.basic_auth url.user, url.password if url.user && !url.user.empty?
       retry_counter = 0
       begin
