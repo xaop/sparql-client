@@ -23,6 +23,8 @@ module SPARQL
     ACCEPT_JSON = {'Accept' => RESULT_JSON}.freeze
     ACCEPT_XML  = {'Accept' => RESULT_XML}.freeze
 
+    DEFAULT_METHOD = "post"
+
     attr_reader :url
     attr_reader :options
 
@@ -154,7 +156,8 @@ module SPARQL
     # @return [String]
     def response(query, options = {})
       @headers['Accept'] = options[:content_type] if options[:content_type]
-      post(query, options[:headers] || {}, options[:type]) do |response|
+      method = options[:method] || DEFAULT_METHOD
+      send(method, query, options[:headers] || {}, options[:type]) do |response|
         case response
           when Net::HTTPBadRequest  # 400 Bad Request
             raise MalformedQuery.new(response.body)
