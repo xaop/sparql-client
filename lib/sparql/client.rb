@@ -132,7 +132,7 @@ module SPARQL
     # @return [String]
     def response(query, options = {})
       @headers['Accept'] = options[:content_type] if options[:content_type]
-      method = options[:method] || DEFAULT_METHOD
+      method = options[:method] || self.options[:method] || DEFAULT_METHOD
       send(method, query, options[:headers] || {}, options[:type]) do |response|
         case response
           when Net::HTTPBadRequest  # 400 Bad Request
@@ -253,7 +253,7 @@ module SPARQL
     # @param  [Hash{Symbol => Object}] options
     # @return [RDF::Enumerable]
     def parse_rdf_serialization(response, options = {})
-      options = {:content_type => response.content_type} if options.empty?
+      options = {:content_type => response.content_type} unless options[:content_type]
       if reader = RDF::Reader.for(options)
         reader.new(response.body)
       end
