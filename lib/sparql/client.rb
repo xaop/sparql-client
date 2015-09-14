@@ -309,7 +309,7 @@ module SPARQL
 
       request = Net::HTTP::Get.new(url.request_uri, @headers.merge(headers))
       request.basic_auth url.user, url.password if url.user && !url.user.empty?
-      response = @http.request url, request
+      response = @http.request ::URI.parse(url.to_s), request
       if block_given?
         block.call(response)
       else
@@ -336,7 +336,7 @@ module SPARQL
       request.basic_auth url.user, url.password if url.user && !url.user.empty?
       retry_counter = 0
       begin
-        response = @http.request url, request
+        response = @http.request ::URI.parse(url.to_s), request
       rescue Net::HTTP::Persistent::Error => e
         if retry_counter < 2 && /too many connection resets/ === e.message
           retry_counter += 1
